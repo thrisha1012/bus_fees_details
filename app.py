@@ -1,50 +1,13 @@
 from flask import Flask, redirect, url_for, render_template, request, session
 import mysql.connector
+from flask import jsonify
 import datetime
 import random  # for generating random numbers
-
+from db_operations import *
 app = Flask(__name__)
 app.secret_key = 'ehorizon project'
 
-# Function to connect to the MySQL database
-def connect_db():
-    try:
-        conn = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='soorya',
-            database='busfee'
-        )
-        print("Database connected successfully")
-        return conn
-    except Exception as e:
-        print("Error connecting to database:", str(e))
-        raise
 
-# Function to check if a user exists in the database
-def user_exists(rollno, password):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM user WHERE rollno=%s AND password=%s", (rollno, password))
-    user = cur.fetchone()
-    conn.close()
-    return user
-def fetch_bus_detailss(busno,stop):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM busdetails WHERE busnumber=%s AND busstop=%s", (busno, stop))
-    bus = cur.fetchone()
-    conn.close()
-    return bus
-# Function to add a new user to the database
-# Function to add a new user to the database
-def add_user(rollno, password, firstname, lastname, email, busnumber, busstop):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO user (rollno, password, firstname, lastname, email, busnumber, busstop) VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                (rollno, password, firstname, lastname, email, busnumber, busstop))
-    conn.commit()
-    conn.close()
 # Function to create a new transaction ID
 def create_transaction_id(rollno):
 
@@ -61,46 +24,6 @@ def create_transaction_id(rollno):
     transaction_id = f"{timestamp}_{rollno_last_three}_{random_number}"
 
     return transaction_id
-
-# Function to add a new transaction to the database
-# def add_transaction(transaction_id, rollno, amount, status):
-#     conn = connect_db()
-#     cur = conn.cursor()
-#     cur.execute("INSERT INTO transactions (transaction_id, rollno, amount, status) VALUES (%s, %s, %s, %s)",
-#                 (transaction_id, rollno, amount, status))
-#     conn.commit()
-#     conn.close()
-def fetch_bus_details(bus_number):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM busdetails WHERE busnumber= %s", (bus_number,))
-    bus_details = cur.fetchall()
-    conn.close()
-    print(bus_details,bus_number,end=" ")
-    return bus_details
-
-def fetch_transaction_details(rollno):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM transactions WHERE rollno = %s", (rollno,))
-    transaction_details = cur.fetchall()
-    conn.close()
-    return transaction_details
-def fetch_user_details(rollno):
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM user WHERE rollno = %s", (rollno,))
-    user_details = cur.fetchone()  # Use fetchone to retrieve a single row
-    conn.close()
-    print("Got the following details from DB:", user_details)
-    return user_details
-def fetch_all_bus_details():
-    conn = connect_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM busdetails")
-    bus_details = cur.fetchall()
-    conn.close()
-    return bus_details
 
 @app.route("/show_transport", methods=["GET", "POST"])
 def bus_details():
@@ -190,20 +113,7 @@ def register():
             return render_template("login.html", error=error_message)
     return render_template("login.html")
 
-from flask import jsonify, request
-
 # Function to update the status field in the user table
-def update_user_status(rollno):
-    try:
-        conn = connect_db()
-        cur = conn.cursor()
-        cur.execute("UPDATE user SET stat = TRUE WHERE rollno = %s", (rollno,))
-        cur.execute("UPDATE transactions SET status = TRUE WHERE rollno = %s", (rollno,))
-        conn.commit()
-        conn.close()
-        print(f"User status updated for rollno {rollno}")
-    except Exception as e:
-        print("Error updating user status:", str(e))
 
 @app.route("/payment_success", methods=["POST"])
 def payment_success():
@@ -287,41 +197,10 @@ def terms():
 
 
 # Fetch students based on filtering options
-def fetch_students(bus_number_filter=None, paid_status_filter=None):
-    print("In fetch_students",bus_number_filter,paid_status_filter)
-    conn = connect_db()
-    cur = conn.cursor(dictionary=True)
-
-    query = "SELECT * FROM user WHERE 1"
-    params = []
-
-    if bus_number_filter:
-        query += " AND busnumber = %s"
-        params.append(bus_number_filter)
-
-    if paid_status_filter == "paid":
-        query += " AND stat = 1"
-    elif paid_status_filter == "not_paid":
-        query += " AND stat = 0"
-
-    cur.execute(query, params)
-    students = cur.fetchall()
-
-    conn.close()
-    return students
 
 
 # Fetch unique bus numbers from the users table
-def fetch_bus_numbers():
-    conn = connect_db()
-    cur = conn.cursor()
 
-    # Execute query to fetch unique bus numbers
-    cur.execute("SELECT DISTINCT busnumber FROM user")
-    bus_numbers = [row[0] for row in cur.fetchall()]  # Extracting the first element of each row
-    print(bus_numbers)
-    conn.close()
-    return bus_numbers
 
 # Function to handle the admin panel route
 @app.route("/admin", methods=["GET", "POST"])
